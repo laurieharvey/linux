@@ -1,11 +1,19 @@
-#include <unistd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 int main( int argc, char *argv[] )
 {
     if( argc < 2 || argc > 3 )
+    {
+        write( STDERR_FILENO,
+               "Usage: tee [OPTION]... [FILE]...\n"
+               "Copy standard input to FILE, and also to standard output.\n\n"
+               " -a\tappend to the given FILE, do not overwrite\n",
+               140 );
+
         return 1;
+    }
 
     const char *pathname = nullptr;
     const char *append = nullptr;
@@ -15,12 +23,12 @@ int main( int argc, char *argv[] )
 
     if( argc == 2 )
     {
-        pathname = argv[ 1 ];
+        pathname = argv[1];
     }
     else
     {
         open_flags |= O_APPEND;
-        pathname = argv[ 2 ];
+        pathname = argv[2];
     }
 
     const int fd = open( pathname, open_flags, mode_flags );
@@ -32,7 +40,7 @@ int main( int argc, char *argv[] )
     }
 
     const size_t buffer_size = 10;
-    char buffer[ buffer_size ];
+    char buffer[buffer_size];
 
     while( true )
     {
@@ -44,7 +52,7 @@ int main( int argc, char *argv[] )
             return 1;
         }
         else if( bytes_read == 0 )
-        {            
+        {
             break;
         }
 
@@ -65,7 +73,6 @@ int main( int argc, char *argv[] )
         write( STDERR_FILENO, "Failed to close file\n", 22 );
         return 1;
     }
-    
 
     return 0;
 }
