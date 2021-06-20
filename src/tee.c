@@ -15,8 +15,8 @@ int main( int argc, char *argv[] )
         return 1;
     }
 
-    const char *pathname = nullptr;
-    const char *append = nullptr;
+    const char *pathname = 0;
+    const char *append = 0;
 
     int open_flags = O_WRONLY | O_CREAT;
     int mode_flags = S_IRUSR | S_IWUSR | S_IEXEC;
@@ -42,9 +42,9 @@ int main( int argc, char *argv[] )
     const size_t buffer_size = 10;
     char buffer[buffer_size];
 
-    while( true )
+    while( 1 )
     {
-        auto bytes_read = read( STDIN_FILENO, buffer, buffer_size );
+        ssize_t bytes_read = read( STDIN_FILENO, buffer, buffer_size );
 
         if( bytes_read == -1 )
         {
