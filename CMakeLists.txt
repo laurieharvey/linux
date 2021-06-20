@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.0)
 project(linux VERSION 0.1.0)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(tee src/tee.c)
 add_executable(seek src/seek.c)

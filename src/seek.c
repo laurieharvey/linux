@@ -1,53 +1,63 @@
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdio.h>
 
 int main( int argc, char *argv[] )
 {
     if( argc < 3 )
     {
         write( STDERR_FILENO, "Usage: seek [FILE] [r<length>|R<length>|w<string>|s<offset>]...\n", 65 );
+        return 1;
     }
 
     const char *pathname = argv[1];
 
-    const int open_flags = O_WRONLY | O_CREAT;
+    const int open_flags = O_RDWR | O_CREAT;
     const int mode_flags = S_IRUSR | S_IWUSR;
 
     const int fd = open( pathname, open_flags, mode_flags );
 
     for( int cmd = 2; cmd + 1 < argc; cmd += 2 )
     {
-        if( argv[cmd] == "-o" )
+        if( strcmp( argv[cmd], "-o" ) == 0 )
         {
-            off_t current_offset = lseek( fd, (int)strtol( argv[cmd + 1], 0, 10 ), SEEK_SET );
+            off_t current_offset = lseek( fd, (int)strtol( argv[cmd + 1], 0, 16 ), SEEK_SET );
             char buffer[100];
-            printf( buffer, "Seeked to position %Xu", current_offset );
-            ssize_t bytes_written = write( STDOUT_FILENO, buffer, sizeof( buffer ) );
+            sprintf( buffer, "Seeked to position 0x%lx\n", current_offset );
+            ssize_t bytes_written = write( STDOUT_FILENO, buffer, strlen( buffer ) );
         }
-        else if( argv[cmd] == "-a" )
+        else if( strcmp( argv[cmd], "-a" ) == 0 )
         {
-            off_t current_offset = lseek( fd, (int)strtol( argv[cmd + 1], 0, 10 ), SEEK_CUR );
+            off_t current_offset = lseek( fd, (int)strtol( argv[cmd + 1], 0, 16 ), SEEK_CUR );
             char buffer[100];
-            printf( buffer, "Seeked to position %Xu", current_offset );
-            ssize_t bytes_written = write( STDOUT_FILENO, buffer, sizeof( buffer ) );
+            sprintf( buffer, "Seeked to position 0x%lx\n", current_offset );
+            ssize_t bytes_written = write( STDOUT_FILENO, buffer, strlen( buffer ) );
         }
-        else if( argv[cmd] == "-r" )
+        else if( strcmp( argv[cmd], "-r" ) == 0 )
         {
-            unsigned long bytes_to_read = strtoul( argv[cmd + 1], 0, 10 );
-            void *buffer = malloc( bytes_to_read );
-            ssize_t bytes_read = read( fd, buffer, bytes_to_read );
-            ssize_t bytes_written = write( STDOUT_FILENO, buffer, bytes_to_read );
+            unsigned long bytes_to_read = strtoul( argv[cmd + 1], 0, 16 );
+            void *buffer = malloc( bytes_to_read + 6 );
+            strcpy( buffer, "Read: " );
+            ssize_t bytes_read = read( fd, buffer + 6, bytes_to_read );
+            ssize_t bytes_written = 0;
+            ssize_t total_bytes_written = 0;
+            while( bytes_written != -1 && total_bytes_written < bytes_read )
+            {
+                bytes_written = write( STDOUT_FILENO, buffer, bytes_read + 6 );
+                total_bytes_written += bytes_written;
+            }
+            free( buffer );
         }
-        else if( argv[cmd] == "-w" )
+        else if( strcmp( argv[cmd], "-w" ) == 0 )
         {
             off_t offset = lseek( fd, 0, SEEK_CUR );
             ssize_t bytes_written = write( fd, argv[cmd + 1], strlen( argv[cmd + 1] ) );
             void *buffer = malloc( strlen( argv[cmd + 1] ) + 100 );
-            printf( buffer, "Wrote %s at position %Xll", argv[cmd + 1], offset );
+            int result = sprintf( buffer, "Wrote %s at position 0x%lx\n", argv[cmd + 1], offset );
             bytes_written = write( STDOUT_FILENO, buffer, strlen( buffer ) );
+            free( buffer );
         }
         else
         {
