@@ -91,5 +91,10 @@ int main( int argc, char *argv[] )
         }
     }
 
+    if( close( fd ) == -1 )
+    {
+        return 1;
+    }
+
     return 0;
 }
