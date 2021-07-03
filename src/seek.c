@@ -4,11 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "lib.h"
+
 int main( int argc, char *argv[] )
 {
     if( argc < 3 )
     {
-        write( STDERR_FILENO, "Usage: seek [FILE] [r<length>|R<length>|w<string>|s<offset>]...\n", 65 );
         return 1;
     }
 
@@ -21,82 +22,71 @@ int main( int argc, char *argv[] )
 
     for( int cmd = 2; cmd + 1 < argc; cmd += 2 )
     {
-        if( strcmp( argv[cmd], "-o" ) == 0 )
+        if( strcmp( argv[cmd], "-j" ) == 0 )
         {
-            off_t current_offset = lseek( fd, (int)strtol( argv[cmd + 1], 0, 16 ), SEEK_SET );
-            char buffer[27];
-            sprintf( buffer, "0x%llx: seek\n", current_offset );
+            off_t current_offset = lseek( fd, 0, SEEK_CUR );
+            char buffer[100];
+            sprintf( buffer, "%#018llx: jump    %#018llx\n", current_offset, strtoll( argv[cmd + 1], 0, 16 ) );
 
-            ssize_t bytes_written = 0;
-            ssize_t total_bytes_written = 0;
-
-            while( total_bytes_written < strlen( buffer ) )
+            if( linux_write( STDOUT_FILENO, buffer, strlen( buffer ) ) )
             {
-                bytes_written = write( STDOUT_FILENO, buffer, strlen( buffer ) );
-                total_bytes_written += bytes_written;
-
-                if( bytes_written < 0 )
-                {                    
-                    return 1;
-                }
+                return 1;
             }
+
+            lseek( fd, (off_t)strtol( argv[cmd + 1], 0, 16 ), SEEK_SET );
         }
         else if( strcmp( argv[cmd], "-a" ) == 0 )
         {
-            off_t current_offset = lseek( fd, (int)strtol( argv[cmd + 1], 0, 16 ), SEEK_CUR );
-            char buffer[30];
-            sprintf( buffer, "0x%llx: advance\n", current_offset );
+            off_t current_offset = lseek( fd, 0, SEEK_CUR );
+            char buffer[100];
+            sprintf( buffer, "%#018llx: advance %#018llx\n", current_offset, strtoll( argv[cmd + 1], 0, 16 ) );
 
-            ssize_t bytes_written = 0;
-            ssize_t total_bytes_written = 0;
-
-            while( total_bytes_written < strlen( buffer ) )
+            if( linux_write( STDOUT_FILENO, buffer, strlen( buffer ) ) )
             {
-                bytes_written = write( STDOUT_FILENO, buffer, strlen( buffer ) );
-                total_bytes_written += bytes_written;
-
-                if( bytes_written < 0 )
-                {                    
-                    return 1;
-                }
+                return 1;
             }
+            
+            lseek( fd, (off_t)strtol( argv[cmd + 1], 0, 16 ), SEEK_CUR );
         }
         else if( strcmp( argv[cmd], "-r" ) == 0 )
         {
-            unsigned long bytes_to_read = strtoul( argv[cmd + 1], 0, 16 );
-            void *buffer = malloc( bytes_to_read + 6 );
-            strcpy( buffer, "Read: " );
-            ssize_t bytes_read = read( fd, buffer + 6, bytes_to_read );
+            off_t current_offset = lseek( fd, 0, SEEK_CUR );
+            char static_buffer[30];
+            int string_size = sprintf( static_buffer, "%#018llx: read    ", current_offset );
 
-            ssize_t bytes_written = 0;
-            ssize_t total_bytes_written = 0;
-            
-            while( bytes_written != -1 && total_bytes_written < bytes_read )
+            if( linux_write( STDOUT_FILENO, static_buffer, strlen( static_buffer ) ) )
             {
-                bytes_written = write( STDOUT_FILENO, buffer, bytes_read + 6 );
-                total_bytes_written += bytes_written;
-
-                if( bytes_written < 0 )
-                {                    
-                    free( buffer );
-                    return 1;
-                }
+                return 1;
             }
 
-            free( buffer );
+            unsigned long bytes_to_read = strtoul( argv[cmd + 1], 0, 16 );
+            void *dynamic_buffer = malloc( bytes_to_read + 1 );
+            ssize_t bytes_read = read( fd, dynamic_buffer, bytes_to_read );
+            ( (char*) dynamic_buffer )[ bytes_read ] = '\n';
+
+            if( linux_write( STDOUT_FILENO, dynamic_buffer, bytes_to_read + 1 ) )
+            {
+                return 1;
+            }
+
+            free( dynamic_buffer );
         }
         else if( strcmp( argv[cmd], "-w" ) == 0 )
         {
-            off_t offset = lseek( fd, 0, SEEK_CUR );
-            ssize_t bytes_written = write( fd, argv[cmd + 1], strlen( argv[cmd + 1] ) );
-            void *buffer = malloc( strlen( argv[cmd + 1] ) + 100 );
-            int result = sprintf( buffer, "Wrote %s at position 0x%llx\n", argv[cmd + 1], offset );
-            bytes_written = write( STDOUT_FILENO, buffer, strlen( buffer ) );
-            free( buffer );
+            off_t current_offset = lseek( fd, 0, SEEK_CUR );
+            char static_buffer[30+strlen(argv[cmd + 1])];
+            int string_size = sprintf( static_buffer, "%#018llx: write   %s\n", current_offset, argv[cmd + 1] );
+
+            if( linux_write( STDOUT_FILENO, static_buffer, strlen( static_buffer ) ) )
+            {
+                return 1;
+            }
+
+            linux_write( fd, argv[cmd + 1], strlen( argv[cmd + 1] ) );
         }
         else
         {
-            write( STDERR_FILENO, "Unknown command\n", 17 );
+            linux_write( STDERR_FILENO, "Unknown command\n", 17 );
             return 1;
         }
     }
