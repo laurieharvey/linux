@@ -8,6 +8,7 @@ include_directories(include)
 
 add_executable(tee src/tee.c)
 add_executable(seek src/lib.c src/seek.c)
+add_executable(cp src/lib.c src/cp.c)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
